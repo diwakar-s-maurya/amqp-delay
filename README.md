@@ -1,4 +1,4 @@
-# Deplay messages for AMQP-0-9-1
+# Delay messages for AMQP-0-9-1
 
 Usecase: I want send/process a AMQP0-9-1 message at x time
 
