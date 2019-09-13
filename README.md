@@ -1,6 +1,6 @@
-# Delay messages for AMQP-0-9-1
+# Delay messages for AMQP 0-9-1
 
-Usecase: I want send/process a AMQP0-9-1 message at x time
+Usecase: I want send/process a AMQP 0-9-1 message at x time
 
 This application lets you send a message to another queue or process a message for self with delays. There is no limit on amount of delay time.
 
