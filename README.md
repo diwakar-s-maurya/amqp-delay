@@ -44,4 +44,4 @@ It builds on top message acknowledgement feature of message brokers. Producers w
 This message is picked by this application, set's an internal timeout equal to time left for delay expiration. When the internal timer timesout, the message payload is delivered to queue mentioned in `replyQueueName`.
 
 ### Fault tolerance and high availabiliy
-You can run multiple replicas of this application. The messages sent by producers are `acked` and removed from the application's queue only when the message has been delivered to `replyQueueName`. If the replica crashes before delivering the message to `replyQueueName`, rabbitmq will reenqueue the message and some other relica will pick it up and repeat the delay logic till its delivered to `replyQueueName`
+You can run multiple replicas of this application. The messages sent by producers are `acked` and removed from the application's queue only when the message has been delivered to `replyQueueName`. If the replica crashes before delivering the message to `replyQueueName`, the message broker will reenqueue the message and some other relica will pick it up and repeat the delay logic till its delivered to `replyQueueName`
