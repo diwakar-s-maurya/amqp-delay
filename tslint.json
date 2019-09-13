@@ -1,0 +1,14 @@
+{
+    "defaultSeverity": "error",
+    "extends": [
+        "tslint:recommended",
+        "tslint-no-unused-expression-chai"
+    ],
+    "jsRules": {},
+    "rules": {
+        "no-console": false,
+        "semicolon": [true, "never"],
+        "max-line-length": [true, 150]
+    },
+    "rulesDirectory": []
+}
