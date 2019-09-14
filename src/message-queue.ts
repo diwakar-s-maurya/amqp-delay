@@ -19,6 +19,7 @@ connection.then((establishedConn) => {
     conn = establishedConn
     return conn.createChannel()
 }).then((ch) => {
+    channel = ch
     return ch.assertQueue(config.DELAY_QUEUE_NAME).then(() => {
         return ch.consume(config.DELAY_QUEUE_NAME, async (msg) => {
             if (msg === null) {
@@ -40,21 +41,23 @@ connection.then((establishedConn) => {
                 return ch.nack(msg, undefined, false)
             }
 
-            const expirationTime = (new Date(jsonMessage.expireAt)).getTime()
+            const expirationTime = (new Date(jsonMessage.expireAt * 1000)).getTime() // unix timestamp does not have microseconds, javascript has them
             const currentTime = (new Date()).getTime()
             const timeLeftForExpiration = expirationTime - currentTime
 
             if (timeLeftForExpiration <= 0) {
-                console.debug("Time already passed. Ack message")
+                console.debug("Time already passed. Sending message to %s", jsonMessage.replyQueueName)
                 await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload))
                 ch.ack(msg)
+                console.log("Sent")
                 return
             }
 
-            console.debug("Setting timer for %s", timeLeftForExpiration)
+            console.debug("Setting timer for %s to expire at %s", timeLeftForExpiration, (new Date(jsonMessage.expireAt * 1000)))
             timeoutRefernces.concat(setTimeout(async () => {
-                console.log("Ack message")
+                console.log("Message delay expired. Sending message to %s", jsonMessage.replyQueueName)
                 await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload))
+                console.log("Sent")
                 ch.ack(msg)
             }, timeLeftForExpiration))
         }, { consumerTag: "delay-consumer" })

@@ -4,6 +4,7 @@ import bodyParser from "body-parser"
 import express, { Request, Response } from "express"
 import helmet from "helmet"
 import "././message-queue"
+import config from "./config"
 
 const app = express()
 
@@ -19,4 +20,6 @@ app.disable("x-powered-by")
 
 app.get("/health", (req: Request, res: Response) => res.sendStatus(200))
 
-app.listen(process.env.PORT || 3000, () => console.log("Starting server on Port 3000"))
+if (config.HEALTH_CHECK_HTTP_PORT) {
+    app.listen(config.HEALTH_CHECK_HTTP_PORT, () => console.log(`Starting health check server on Port ${config.HEALTH_CHECK_HTTP_PORT}`))
+}
