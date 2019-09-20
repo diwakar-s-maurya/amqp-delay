@@ -15,13 +15,13 @@ describe("Test reception", () => {
         try {
             await channel.assertQueue(config.DELAY_QUEUE_NAME)
             const expireAt = new Date()
-            expireAt.setSeconds(expireAt.getSeconds() + 10)
+            expireAt.setSeconds(expireAt.getSeconds() + 100)
             const message = {
-                expireAt: expireAt.getTime(),
+                expireAt: expireAt.getTime() / 1000, // needs unix timestamp
                 replyQueueName: "my-application",
                 payload: "Hello at " + expireAt,
             }
-            await channel.sendToQueue(config.DELAY_QUEUE_NAME, Buffer.from(JSON.stringify(message)))
+            await channel.sendToQueue(config.DELAY_QUEUE_NAME, Buffer.from(JSON.stringify(message)), {persistent: true})
         } catch (error) {
             throw error
         }
