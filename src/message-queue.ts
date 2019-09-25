@@ -63,7 +63,7 @@ connectToMq()
 
 const setUpConsumer = async (ch: amqplib.ConfirmChannel) => {
     await ch.assertQueue(config.DELAY_QUEUE_NAME)
-    ch.prefetch(5, true)
+    // ch.prefetch(5, true)
     console.log("Consuming %s queue", config.DELAY_QUEUE_NAME)
     return ch.consume(config.DELAY_QUEUE_NAME, (msg) => queueConsumer(ch, msg), { consumerTag: "consumer" })
 }
