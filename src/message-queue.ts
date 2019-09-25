@@ -118,7 +118,7 @@ process.once("SIGINT", async () => {
         await establishedCh.cancel("consumer")
         clearTimeout(reconnectTimer)
         timeoutRefernces.forEach((ref) => clearTimeout(ref))
-        establishedConn.close() // .bind(establishedConn)
+        setTimeout(() => establishedConn.close(), 10000) // close connection with delay to allow draining time for any ongoing operation
     } catch (error) {
         console.error("Error in closing channel", error)
         process.exit(-1)
