@@ -94,7 +94,7 @@ const queueConsumer = async (ch: amqplib.Channel, msg: amqplib.ConsumeMessage | 
 
     if (timeLeftForExpiration <= 0) {
         console.debug("Time already passed. Sending message to %s", jsonMessage.replyQueueName)
-        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload))
+        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload), {persistent: true})
         ch.ack(msg)
         console.log("Sent")
         return
@@ -103,7 +103,7 @@ const queueConsumer = async (ch: amqplib.Channel, msg: amqplib.ConsumeMessage | 
     console.debug("Setting timer for %sms to expire at %s", timeLeftForExpiration, (new Date(jsonMessage.expireAt * 1000)))
     timeoutRefernces.concat(setTimeout(async () => {
         console.log("Message delay expired. Sending message to %s", jsonMessage.replyQueueName)
-        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload))
+        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload), {persistent: true})
         console.log("Sent")
         ch.ack(msg)
     }, timeLeftForExpiration))
