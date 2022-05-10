@@ -1,13 +1,14 @@
 import Joi from "@hapi/joi"
 import amqplib from "amqplib"
 import config from "./config"
+import { v4 as uuidv4 } from 'uuid'
 
 let establishedConn: amqplib.Connection
 let establishedCh: amqplib.ConfirmChannel
 let shouldReconnect = true
 let reconnectTimer: NodeJS.Timeout
 
-const timeoutRefernces: NodeJS.Timeout[] = []
+const timeoutReferences: { [key: string]: NodeJS.Timeout } = {}
 
 // message schema
 const schema = Joi.object({
@@ -36,7 +37,7 @@ const connectToMq = (): Promise<amqplib.Connection> => new Promise((resolve, rej
             }
             // if connection is restored after disconnection, all the messages that had been fetched by this consumer but not acked yet will be resent
             // clear the timers that had been set before because those messages will be sent again, so that we avoid duplicate processing
-            timeoutRefernces.forEach((ref) => clearTimeout(ref))
+            Object.keys(timeoutReferences).forEach((ref) => clearTimeout(timeoutReferences[ref]))
             console.log("Cleared all timers because of disconnection")
 
             console.warn("[AMQP] reconnecting")
@@ -61,6 +62,14 @@ const connectToMq = (): Promise<amqplib.Connection> => new Promise((resolve, rej
 
 connectToMq()
 
+function getUniqueKey(): string {
+    let key = uuidv4()
+    if (!timeoutReferences[key]) {
+        return key
+    }
+    return getUniqueKey()
+}
+
 const setUpConsumer = async (ch: amqplib.ConfirmChannel) => {
     await ch.assertQueue(config.DELAY_QUEUE_NAME)
     // ch.prefetch(5, true)
@@ -72,7 +81,7 @@ const queueConsumer = async (ch: amqplib.Channel, msg: amqplib.ConsumeMessage | 
     if (msg === null) {
         return
     }
-    let jsonMessage: {expireAt: number, replyQueueName: string, payload: string}
+    let jsonMessage: { expireAt: number, replyQueueName: string, payload: string }
     console.debug("Received message")
     try {
         jsonMessage = JSON.parse(msg.content.toString())
@@ -93,20 +102,23 @@ const queueConsumer = async (ch: amqplib.Channel, msg: amqplib.ConsumeMessage | 
     const timeLeftForExpiration = expirationTime - currentTime
 
     if (timeLeftForExpiration <= 0) {
-        console.debug("Time already passed. Sending message to %s", jsonMessage.replyQueueName)
-        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload), {persistent: true})
+        console.debug("Time %s already passed. Sending message to %s", (new Date(jsonMessage.expireAt * 1000)).toLocaleString(), jsonMessage.replyQueueName)
+        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload), { persistent: true })
         ch.ack(msg)
         console.log("Sent")
         return
     }
 
-    console.debug("Setting timer for %sms to expire at %s", timeLeftForExpiration, (new Date(jsonMessage.expireAt * 1000)))
-    timeoutRefernces.concat(setTimeout(async () => {
-        console.log("Message delay expired. Sending message to %s", jsonMessage.replyQueueName)
-        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload), {persistent: true})
+    console.debug("Setting timer for %s ms to expire at %s with data: %s", timeLeftForExpiration, (new Date(jsonMessage.expireAt * 1000)), JSON.stringify(jsonMessage))
+    const key = getUniqueKey()
+    const timeoutRef = setTimeout(async () => {
+        console.log("Message delay expired. Sending message to %s with data: %s", jsonMessage.replyQueueName, JSON.stringify(jsonMessage))
+        await ch.sendToQueue(jsonMessage.replyQueueName, Buffer.from(jsonMessage.payload), { persistent: true })
         console.log("Sent")
         ch.ack(msg)
-    }, timeLeftForExpiration))
+        delete timeoutReferences[key]
+    }, timeLeftForExpiration)
+    timeoutReferences[key] = timeoutRef
 }
 
 process.once("SIGINT", async () => {
@@ -117,7 +129,7 @@ process.once("SIGINT", async () => {
     try {
         await establishedCh.cancel("consumer")
         clearTimeout(reconnectTimer)
-        timeoutRefernces.forEach((ref) => clearTimeout(ref))
+        Object.keys(timeoutReferences).forEach((key) => clearTimeout(timeoutReferences[key]))
         setTimeout(() => establishedConn.close(), 10000) // close connection with delay to allow draining time for any ongoing operation
     } catch (error) {
         console.error("Error in closing channel", error)
