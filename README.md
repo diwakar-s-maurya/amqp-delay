@@ -14,11 +14,21 @@ This application tries to solve the above pain points
 
 ## Getting started
 
+Requires Node.js 20.19+ (22 LTS recommended).
+
 ```bash
 npm install
 export DELAY_QUEUE_NAME=delay-queue
 export AMQP_CONNECTION_STRING=amqp://localhost
 npm start
+```
+
+The tests run the consumer in-process and assert the full round trip: a message published to the delay queue must come back on its `replyQueueName` only after the delay has elapsed. They require a reachable AMQP broker, pointed at by `AMQP_CONNECTION_STRING`:
+
+```bash
+docker run -d --name rabbit -p 5672:5672 \
+  -e RABBITMQ_DEFAULT_USER=user -e RABBITMQ_DEFAULT_PASS=password rabbitmq:4-alpine
+AMQP_CONNECTION_STRING=amqp://user:password@localhost:5672 npm test
 ```
 
 Now to start making use of it, producers wanting to send a message to consumer queue with delay, should send that message to `delay-queue` in following format:
